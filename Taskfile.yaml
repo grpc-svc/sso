@@ -1,0 +1,7 @@
+version: 3
+
+tasks:
+  sso:
+    desc: "Run the SSO service"
+    cmds:
+      - go run ./cmd/sso/main.go --config=./config/local.yaml
