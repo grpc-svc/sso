@@ -1,0 +1,61 @@
+# Binaries
+/bin/
+/out/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build artifacts
+*.test
+*.a
+*.o
+*.out
+coverage.out
+*.prof
+
+# Dependency/vendor
+/vendor/
+
+# Generated files (protobufs, mocks, etc.)
+*.pb.go
+gen/
+generated/
+**/gen/
+
+# Test results / coverage
+coverage/
+test-results/
+*.coverprofile
+
+# Logs, databases, secrets
+*.log
+*.sqlite
+*.db
+.env
+.env.local
+.env.*.local
+credentials.json
+secrets.json
+
+# IDEs and editors
+.idea/
+*.iml
+.vscode/
+*.sublime-workspace
+*.sublime-project
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Misc
+node_modules/
+dist/
+tmp/
+tmp-*/
