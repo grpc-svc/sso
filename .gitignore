@@ -63,5 +63,3 @@ temp/
 # Debug files
 debug
 __debug_bin
-
-# Air live reload tool
