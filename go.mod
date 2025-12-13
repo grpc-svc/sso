@@ -3,8 +3,10 @@ module sso
 go 1.25.0
 
 require (
-	github.com/grpc-svc/protos v0.0.6
+	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/grpc-svc/protos v0.0.7
 	github.com/ilyakaznacheev/cleanenv v1.5.0
+	golang.org/x/crypto v0.46.0
 	google.golang.org/grpc v1.77.0
 )
 
