@@ -5,3 +5,7 @@ tasks:
     desc: "Run the SSO service"
     cmds:
       - go run ./cmd/sso/main.go --config=./config/local.yaml
+  migrateUp:
+    desc: "Run the database migrations up"
+    cmds:
+      - go run ./cmd/migrator/main.go --storage-path=./storage/sso.db --migrations-path=./migrations

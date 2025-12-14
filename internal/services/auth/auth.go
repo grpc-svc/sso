@@ -8,11 +8,9 @@ import (
 	"sso/internal/domain/models"
 	"sso/internal/lib/hash"
 	"sso/internal/lib/jwt"
-	"sso/internal/services/storage"
+	"sso/internal/storage"
 	"time"
 )
-
-var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type Auth struct {
 	log         *slog.Logger
@@ -39,6 +37,13 @@ type UserProvider interface {
 type AppProvider interface {
 	App(ctx context.Context, appID int) (app models.App, err error)
 }
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrInvalidAppID       = errors.New("invalid app ID")
+	ErrUserExists         = errors.New("user already exists")
+	ErrUserNotFound       = errors.New("user not found")
+)
 
 // New creates a new instance of the Auth service.
 func New(
@@ -90,7 +95,7 @@ func (a *Auth) Login(
 	if err != nil {
 		if errors.Is(err, storage.ErrAppNotFound) {
 			log.Warn("app not found", slog.String("error", err.Error()))
-			return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+			return "", fmt.Errorf("%s: %w", op, ErrInvalidAppID)
 		}
 
 		log.Error("failed to get app", slog.String("error", err.Error()))
@@ -128,6 +133,10 @@ func (a *Auth) Register(
 
 	userID, err = a.usrSaver.SaveUser(ctx, email, passData.Hash, passData.Salt)
 	if err != nil {
+		if errors.Is(err, storage.ErrUserExists) {
+			log.Warn("User already exists", slog.String("error", err.Error()))
+			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+		}
 		log.Error("Failed to save user", slog.String("error", err.Error()))
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -150,6 +159,10 @@ func (a *Auth) IsAdmin(
 
 	isAdmin, err = a.usrProvider.IsAdmin(ctx, userID)
 	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			log.Warn("User not found", slog.String("error", err.Error()))
+			return false, fmt.Errorf("%s: %w", op, ErrUserNotFound)
+		}
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
 

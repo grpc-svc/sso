@@ -3,6 +3,7 @@ package app
 import (
 	"log/slog"
 	grpcapp "sso/internal/app/grpc"
+	"sso/internal/services/auth"
 	"time"
 )
 
@@ -17,7 +18,9 @@ func New(log *slog.Logger,
 ) *App {
 	// TODO инициализация хранилищ, сервисов, middleware и т.д.
 
-	grpcApp := grpcapp.New(log, grpcPort)
+	authService := auth.New(log, storage, storage, storage, tokenTTL)
+
+	grpcApp := grpcapp.New(log, authService, grpcPort)
 
 	return &App{
 		GRPCSrv: grpcApp,
