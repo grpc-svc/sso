@@ -59,3 +59,4 @@ node_modules/
 dist/
 tmp/
 tmp-*/
+/.github/copilot-instructions.md
