@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"sso/internal/app"
 	"sso/internal/config"
+	"sso/internal/lib/logger/slogcute"
 	"syscall"
 )
 
@@ -42,9 +43,7 @@ func setupLogger(env string) *slog.Logger {
 
 	switch env {
 	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		log = setupCuteSlog()
 	case envDev:
 		log = slog.New(
 			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
@@ -56,4 +55,16 @@ func setupLogger(env string) *slog.Logger {
 	}
 
 	return log
+}
+
+func setupCuteSlog() *slog.Logger {
+	opts := slogcute.CuteHandlerOptions{
+		SlogOptions: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+
+	handler := opts.NewCuteHandler(os.Stdout)
+
+	return slog.New(handler)
 }
