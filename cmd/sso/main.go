@@ -23,9 +23,9 @@ func main() {
 
 	log.Info("Application started", slog.String("env", cfg.Env))
 
-	aplicartion := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
+	application := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
 
-	go aplicartion.GRPCSrv.MustRun()
+	go application.GRPCSrv.MustRun()
 
 	// Graceful shutdown
 	stop := make(chan os.Signal, 1)
@@ -33,7 +33,7 @@ func main() {
 
 	<-stop
 
-	aplicartion.GRPCSrv.Stop()
+	application.Stop()
 
 	log.Info("Gracefully stopped")
 }

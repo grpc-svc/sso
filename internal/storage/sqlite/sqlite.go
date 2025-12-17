@@ -28,6 +28,11 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
+// Close closes the database connection.
+func (s *Storage) Close() error {
+	return s.db.Close()
+}
+
 // SaveUser saves a new user and returns its ID.
 func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byte, passwordSalt []byte) (int64, error) {
 	const op = "storage.sqlite.SaveUser"
@@ -36,6 +41,7 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byt
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
+	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, email, passwordHash, passwordSalt)
 	if err != nil {
@@ -62,6 +68,7 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
+	defer stmt.Close()
 
 	row := stmt.QueryRowContext(ctx, email)
 
@@ -84,6 +91,7 @@ func (s *Storage) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
+	defer stmt.Close()
 
 	row := stmt.QueryRowContext(ctx, userID)
 
@@ -106,6 +114,7 @@ func (s *Storage) App(ctx context.Context, appID int) (models.App, error) {
 	if err != nil {
 		return models.App{}, fmt.Errorf("%s: %w", op, err)
 	}
+	defer stmt.Close()
 
 	row := stmt.QueryRowContext(ctx, appID)
 
