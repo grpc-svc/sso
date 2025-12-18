@@ -54,6 +54,10 @@ secrets.json
 Thumbs.db
 desktop.ini
 
+# Qodana
+.qodana/
+qodana.sarif.json
+
 # Misc
 node_modules/
 dist/
