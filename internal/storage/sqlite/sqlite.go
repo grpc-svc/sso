@@ -37,7 +37,7 @@ func (s *Storage) Close() error {
 func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byte, passwordSalt []byte) (int64, error) {
 	const op = "storage.sqlite.SaveUser"
 
-	stmt, err := s.db.Prepare(`INSERT INTO users (email, password_hash, password_salt) VALUES (?, ?, ?)`)
+	stmt, err := s.db.PrepareContext(ctx, `INSERT INTO users (email, password_hash, password_salt) VALUES (?, ?, ?)`)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -64,7 +64,7 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byt
 func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	const op = "storage.sqlite.User"
 
-	stmt, err := s.db.Prepare(`SELECT id, email, password_hash, password_salt FROM users WHERE email = ?`)
+	stmt, err := s.db.PrepareContext(ctx, `SELECT id, email, password_hash, password_salt FROM users WHERE email = ?`)
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -87,7 +87,7 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 func (s *Storage) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 	const op = "storage.sqlite.IsAdmin"
 
-	stmt, err := s.db.Prepare(`SELECT is_admin FROM users WHERE id = ?`)
+	stmt, err := s.db.PrepareContext(ctx, `SELECT is_admin FROM users WHERE id = ?`)
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
@@ -110,7 +110,7 @@ func (s *Storage) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 func (s *Storage) App(ctx context.Context, appID int) (models.App, error) {
 	const op = "storage.sqlite.App"
 
-	stmt, err := s.db.Prepare(`SELECT id, name, secret FROM apps WHERE id = ?`)
+	stmt, err := s.db.PrepareContext(ctx, `SELECT id, name, secret FROM apps WHERE id = ?`)
 	if err != nil {
 		return models.App{}, fmt.Errorf("%s: %w", op, err)
 	}

@@ -18,6 +18,7 @@ func New(log *slog.Logger,
 	grpcPort int,
 	storagePath string,
 	tokenTTL time.Duration,
+	operationTimeout time.Duration,
 ) *App {
 	storage, err := sqlite.New(storagePath)
 	if err != nil {
@@ -26,7 +27,7 @@ func New(log *slog.Logger,
 
 	authService := auth.New(log, storage, storage, storage, tokenTTL)
 
-	grpcApp := grpcapp.New(log, authService, grpcPort)
+	grpcApp := grpcapp.New(log, authService, grpcPort, operationTimeout)
 
 	return &App{
 		GRPCSrv: grpcApp,

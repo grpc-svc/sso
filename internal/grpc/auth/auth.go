@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sso/internal/services/auth"
+	"time"
 
 	ssov1 "github.com/grpc-svc/protos/gen/go/sso"
 	"google.golang.org/grpc"
@@ -31,11 +32,15 @@ type Auth interface {
 
 type serverAPI struct {
 	ssov1.UnimplementedAuthServer
-	auth Auth
+	auth             Auth
+	operationTimeout time.Duration
 }
 
-func Register(gRPC *grpc.Server, auth Auth) {
-	ssov1.RegisterAuthServer(gRPC, &serverAPI{auth: auth})
+func Register(gRPC *grpc.Server, auth Auth, operationTimeout time.Duration) {
+	ssov1.RegisterAuthServer(gRPC, &serverAPI{
+		auth:             auth,
+		operationTimeout: operationTimeout,
+	})
 }
 
 func (s *serverAPI) Login(
@@ -54,10 +59,17 @@ func (s *serverAPI) Login(
 		return nil, status.Error(codes.InvalidArgument, "app_id is required")
 	}
 
-	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
+	// Create context with timeout for database operations
+	opCtx, cancel := context.WithTimeout(ctx, s.operationTimeout)
+	defer cancel()
+
+	token, err := s.auth.Login(opCtx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, status.Error(codes.DeadlineExceeded, "operation timeout")
 		}
 		return nil, status.Error(codes.Internal, "failed to login")
 	}
@@ -79,10 +91,17 @@ func (s *serverAPI) Register(
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
 
-	userID, err := s.auth.Register(ctx, req.GetEmail(), req.GetPassword())
+	// Create context with timeout for database operations
+	opCtx, cancel := context.WithTimeout(ctx, s.operationTimeout)
+	defer cancel()
+
+	userID, err := s.auth.Register(opCtx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		if errors.Is(err, auth.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, status.Error(codes.DeadlineExceeded, "operation timeout")
 		}
 		return nil, status.Error(codes.Internal, "failed to register user")
 	}
@@ -100,10 +119,17 @@ func (s *serverAPI) IsAdmin(
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
-	isAdmin, err := s.auth.IsAdmin(ctx, req.GetUserId())
+	// Create context with timeout for database operations
+	opCtx, cancel := context.WithTimeout(ctx, s.operationTimeout)
+	defer cancel()
+
+	isAdmin, err := s.auth.IsAdmin(opCtx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, auth.ErrUserNotFound) {
 			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, status.Error(codes.DeadlineExceeded, "operation timeout")
 		}
 		return nil, status.Error(codes.Internal, "failed to check admin status")
 	}
