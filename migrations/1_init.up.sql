@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS apps
 (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    secret TEXT NOT NULL
+    public_key TEXT NOT NULL,
+    private_key TEXT NOT NULL
 );

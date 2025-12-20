@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"sso/internal/lib/keygen"
 	"sso/tests/suite"
 	"testing"
 	"time"
@@ -13,9 +14,9 @@ import (
 )
 
 const (
-	emptyAppID = 0
-	appID      = 1
-	appSecret  = "supersecret"
+	emptyAppID   = 0
+	appID        = 1
+	appPublicKey = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxNoW++vKy2UxLq04fuOJ\nfW4YPolWZZATlMmqafmDharNDEkOjgHUqJvVMpV/pLA4kGg3aQY/Pyr11MAeZUqX\n530km68N6WTzYiaIvrYIOehpP9Z+Ao6f9sYYH+BUrHuW8/BRm14vTSFE1yDeUFvF\nNCaZ94QmdH7iz0yCeknw/cHXuQGFdkWm5gUt5Wbd8kNh+cZWNxREH69/l5uxWUG7\nafpiDf17GgWofZQbwHWDvk//6RP1dX7A8xdabwW1IeH8PE9A2deTCS2s/v+qR7cz\n/akbLwIES/icCYoKOOmYhYHtKWa4ZIelbGtYcgbHM/UKinrLXw+B8jfnrBuFoXXL\n3wIDAQAB\n-----END PUBLIC KEY-----\n"
 
 	passDefaultLen = 10
 )
@@ -47,8 +48,17 @@ func TestRegisterLogin_Login_HappyPath(t *testing.T) {
 	token := respLogin.GetToken()
 	assert.NotEmpty(t, token)
 
+	// Parse the RSA public key
+	publicKey, err := keygen.ParseRSAPublicKey(appPublicKey)
+	require.NoError(t, err)
+
+	// Verify token with RSA public key
 	tokenParsed, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(appSecret), nil
+		// Verify signing method is RSA
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return publicKey, nil
 	})
 
 	require.NoError(t, err)
