@@ -28,17 +28,20 @@ func New(t *testing.T) (context.Context, *Suite) {
 
 	ctx, cancelCtx := context.WithTimeout(context.Background(), cfg.GRPC.Timeout)
 
-	t.Cleanup(func() {
-		t.Helper()
-		cancelCtx()
-	})
-
 	cc, err := grpc.NewClient(
 		grpcAddress(cfg),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("failed to create grpc client: %v", err)
 	}
+
+	t.Cleanup(func() {
+		t.Helper()
+		cancelCtx()
+		if err := cc.Close(); err != nil {
+			t.Errorf("failed to close grpc connection: %v", err)
+		}
+	})
 
 	return ctx, &Suite{
 		T:          t,

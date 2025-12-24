@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
 )
 
+// Storage implements the storage.Storage interface using SQLite as the backend.
 type Storage struct {
 	db *sql.DB
 }

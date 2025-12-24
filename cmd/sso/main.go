@@ -7,6 +7,7 @@ import (
 	"sso/internal/app"
 	"sso/internal/config"
 	"sso/internal/lib/logger/slogcute"
+	"sso/internal/storage/sqlite"
 	"syscall"
 )
 
@@ -23,7 +24,21 @@ func main() {
 
 	log.Info("Application started", slog.String("env", cfg.Env))
 
-	application := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL, cfg.GRPC.Timeout)
+	storage, err := sqlite.New(cfg.StoragePath)
+	if err != nil {
+		log.Error("failed to init storage", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	log.Info("storage initialized", slog.String("path", cfg.StoragePath))
+
+	application := app.New(
+		log,
+		storage,
+		storage,
+		cfg.GRPC.Port,
+		cfg.TokenTTL,
+		cfg.GRPC.Timeout,
+	)
 
 	go application.GRPCSrv.MustRun()
 
@@ -35,26 +50,28 @@ func main() {
 
 	application.Stop()
 
+	if err = storage.Close(); err != nil {
+		log.Error("failed to close storage", slog.String("error", err.Error()))
+	}
+
 	log.Info("Gracefully stopped")
 }
 
 func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
 	switch env {
 	case envLocal:
-		log = setupCuteSlog()
+		return setupCuteSlog()
 	case envDev:
-		log = slog.New(
+		return slog.New(
 			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
 		)
 	case envProd:
-		log = slog.New(
+		return slog.New(
 			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
 		)
+	default:
+		panic("unknown environment: " + env)
 	}
-
-	return log
 }
 
 func setupCuteSlog() *slog.Logger {

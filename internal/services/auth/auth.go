@@ -18,19 +18,30 @@ type Service interface {
 	IsAdmin(ctx context.Context, userID int64) (isAdmin bool, err error)
 }
 
+// TokenProvider defines the interface for generating authentication tokens.
 type TokenProvider interface {
 	NewToken(user models.User, app models.App, duration time.Duration) (string, error)
 }
 
+// UserProvider defines the interface for user-related operations.
+type UserProvider interface {
+	SaveUser(ctx context.Context, email string, passwordHash []byte, passwordSalt []byte) (int64, error)
+	User(ctx context.Context, email string) (models.User, error)
+	IsAdmin(ctx context.Context, userID int64) (bool, error)
+}
+
+// AppProvider defines the interface for app-related operations.
+type AppProvider interface {
+	App(ctx context.Context, appID int) (models.App, error)
+}
+
 type Auth struct {
 	log           *slog.Logger
-	storage       storage.Storage
+	userProvider  UserProvider
+	appProvider   AppProvider
 	tokenProvider TokenProvider
 	tokenTTL      time.Duration
 }
-
-// Compile-time check that Auth implements Service interface.
-var _ Service = (*Auth)(nil)
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
@@ -42,13 +53,15 @@ var (
 // New creates a new instance of the Auth service.
 func New(
 	log *slog.Logger,
-	storage storage.Storage,
+	userProvider UserProvider,
+	appProvider AppProvider,
 	tokenProvider TokenProvider,
 	tokenTTL time.Duration,
 ) *Auth {
 	return &Auth{
 		log:           log,
-		storage:       storage,
+		userProvider:  userProvider,
+		appProvider:   appProvider,
 		tokenProvider: tokenProvider,
 		tokenTTL:      tokenTTL,
 	}
@@ -67,7 +80,7 @@ func (a *Auth) Login(
 
 	log.Info("attempting to log in user")
 
-	user, err := a.storage.User(ctx, email)
+	user, err := a.userProvider.User(ctx, email)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			log.Warn("user not found", slog.String("error", err.Error()))
@@ -83,7 +96,7 @@ func (a *Auth) Login(
 
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
-	app, err := a.storage.App(ctx, appID)
+	app, err := a.appProvider.App(ctx, appID)
 	if err != nil {
 		if errors.Is(err, storage.ErrAppNotFound) {
 			log.Warn("app not found", slog.String("error", err.Error()))
@@ -115,25 +128,25 @@ func (a *Auth) Register(
 
 	log := a.log.With(slog.String("op", op), slog.String("email", email))
 
-	log.Info("Registering new user")
+	log.Info("registering new user")
 
 	passData, err := hash.HashPassword(password)
 	if err != nil {
-		log.Error("Failed to hash password", slog.String("error", err.Error()))
+		log.Error("failed to hash password", slog.String("error", err.Error()))
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	userID, err = a.storage.SaveUser(ctx, email, passData.Hash, passData.Salt)
+	userID, err = a.userProvider.SaveUser(ctx, email, passData.Hash, passData.Salt)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserExists) {
-			log.Warn("User already exists", slog.String("error", err.Error()))
+			log.Warn("user already exists", slog.String("error", err.Error()))
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
 		}
-		log.Error("Failed to save user", slog.String("error", err.Error()))
+		log.Error("failed to save user", slog.String("error", err.Error()))
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("User registered", slog.Int64("user_id", userID))
+	log.Info("user registered", slog.Int64("user_id", userID))
 
 	return userID, nil
 }
@@ -147,18 +160,18 @@ func (a *Auth) IsAdmin(
 
 	log := a.log.With(slog.String("op", op), slog.Int64("user_id", userID))
 
-	log.Info("Checking if user is admin")
+	log.Info("checking if user is admin")
 
-	isAdmin, err = a.storage.IsAdmin(ctx, userID)
+	isAdmin, err = a.userProvider.IsAdmin(ctx, userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			log.Warn("User not found", slog.String("error", err.Error()))
+			log.Warn("user not found", slog.String("error", err.Error()))
 			return false, fmt.Errorf("%s: %w", op, ErrUserNotFound)
 		}
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("Checked admin status", slog.Int64("user_id", userID), slog.Bool("is_admin", isAdmin))
+	log.Info("checked admin status", slog.Int64("user_id", userID), slog.Bool("is_admin", isAdmin))
 
 	return isAdmin, nil
 }
