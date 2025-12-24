@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	grpcapp "sso/internal/app/grpc"
+	"sso/internal/lib/jwt"
 	"sso/internal/services/auth"
 	"sso/internal/storage"
 	"sso/internal/storage/sqlite"
@@ -27,7 +28,9 @@ func New(log *slog.Logger,
 		panic(err)
 	}
 
-	authService := auth.New(log, storageInstance, tokenTTL)
+	jwtProvider := jwt.New(log)
+
+	authService := auth.New(log, storageInstance, jwtProvider, tokenTTL)
 
 	grpcApp := grpcapp.New(log, authService, grpcPort, operationTimeout)
 

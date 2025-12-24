@@ -5,24 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sso/internal/domain/models"
 	"sso/internal/lib/hash"
-	"sso/internal/lib/jwt"
 	"sso/internal/storage"
 	"time"
 )
 
 // Service defines the interface for authentication operations.
-// Use this interface for dependency injection and mocking in tests.
 type Service interface {
 	Login(ctx context.Context, email string, password string, appID int) (token string, err error)
 	Register(ctx context.Context, email string, password string) (userID int64, err error)
 	IsAdmin(ctx context.Context, userID int64) (isAdmin bool, err error)
 }
 
+type TokenProvider interface {
+	NewToken(user models.User, app models.App, duration time.Duration) (string, error)
+}
+
 type Auth struct {
-	log      *slog.Logger
-	storage  storage.Storage
-	tokenTTL time.Duration
+	log           *slog.Logger
+	storage       storage.Storage
+	tokenProvider TokenProvider
+	tokenTTL      time.Duration
 }
 
 // Compile-time check that Auth implements Service interface.
@@ -39,12 +43,14 @@ var (
 func New(
 	log *slog.Logger,
 	storage storage.Storage,
+	tokenProvider TokenProvider,
 	tokenTTL time.Duration,
 ) *Auth {
 	return &Auth{
-		log:      log,
-		storage:  storage,
-		tokenTTL: tokenTTL,
+		log:           log,
+		storage:       storage,
+		tokenProvider: tokenProvider,
+		tokenTTL:      tokenTTL,
 	}
 }
 
@@ -90,7 +96,7 @@ func (a *Auth) Login(
 
 	log.Info("user logged in successfully", slog.Int64("user_id", user.ID), slog.Int("app_id", app.ID))
 
-	token, err = jwt.NewToken(user, app, a.tokenTTL)
+	token, err = a.tokenProvider.NewToken(user, app, a.tokenTTL)
 	if err != nil {
 		log.Error("failed to create token", slog.String("error", err.Error()))
 		return "", fmt.Errorf("%s: %w", op, err)
