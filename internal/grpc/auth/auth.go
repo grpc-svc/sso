@@ -12,33 +12,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type Auth interface {
-	Login(
-		ctx context.Context,
-		email string,
-		password string,
-		appID int,
-	) (token string, err error)
-	Register(
-		ctx context.Context,
-		email string,
-		password string,
-	) (userID int64, err error)
-	IsAdmin(
-		ctx context.Context,
-		userID int64,
-	) (isAdmin bool, err error)
-}
-
 type serverAPI struct {
 	ssov1.UnimplementedAuthServer
-	auth             Auth
+	auth             auth.Service
 	operationTimeout time.Duration
 }
 
-func Register(gRPC *grpc.Server, auth Auth, operationTimeout time.Duration) {
+func Register(gRPC *grpc.Server, authService auth.Service, operationTimeout time.Duration) {
 	ssov1.RegisterAuthServer(gRPC, &serverAPI{
-		auth:             auth,
+		auth:             authService,
 		operationTimeout: operationTimeout,
 	})
 }

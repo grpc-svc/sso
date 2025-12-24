@@ -5,38 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sso/internal/domain/models"
 	"sso/internal/lib/hash"
 	"sso/internal/lib/jwt"
 	"sso/internal/storage"
 	"time"
 )
 
-type Auth struct {
-	log         *slog.Logger
-	usrSaver    UserSaver
-	usrProvider UserProvider
-	appProvider AppProvider
-	tokenTTL    time.Duration
-}
-
-type UserSaver interface {
-	SaveUser(
-		ctx context.Context,
-		email string,
-		passwordHash []byte,
-		passwordSalt []byte,
-	) (userID int64, err error)
-}
-
-type UserProvider interface {
-	User(ctx context.Context, email string) (user models.User, err error)
+// Service defines the interface for authentication operations.
+// Use this interface for dependency injection and mocking in tests.
+type Service interface {
+	Login(ctx context.Context, email string, password string, appID int) (token string, err error)
+	Register(ctx context.Context, email string, password string) (userID int64, err error)
 	IsAdmin(ctx context.Context, userID int64) (isAdmin bool, err error)
 }
 
-type AppProvider interface {
-	App(ctx context.Context, appID int) (app models.App, err error)
+type Auth struct {
+	log      *slog.Logger
+	storage  storage.Storage
+	tokenTTL time.Duration
 }
+
+// Compile-time check that Auth implements Service interface.
+var _ Service = (*Auth)(nil)
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
@@ -48,17 +38,13 @@ var (
 // New creates a new instance of the Auth service.
 func New(
 	log *slog.Logger,
-	userSaver UserSaver,
-	userProvider UserProvider,
-	appProvider AppProvider,
+	storage storage.Storage,
 	tokenTTL time.Duration,
 ) *Auth {
 	return &Auth{
-		log:         log,
-		usrSaver:    userSaver,
-		usrProvider: userProvider,
-		appProvider: appProvider,
-		tokenTTL:    tokenTTL,
+		log:      log,
+		storage:  storage,
+		tokenTTL: tokenTTL,
 	}
 }
 
@@ -75,7 +61,7 @@ func (a *Auth) Login(
 
 	log.Info("attempting to log in user")
 
-	user, err := a.usrProvider.User(ctx, email)
+	user, err := a.storage.User(ctx, email)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			log.Warn("user not found", slog.String("error", err.Error()))
@@ -86,12 +72,12 @@ func (a *Auth) Login(
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := hash.ComparePassword(password, user.PasswordSalt, user.PasswordHash); err != nil {
+	if err = hash.ComparePassword(password, user.PasswordSalt, user.PasswordHash); err != nil {
 		log.Info("invalid credentials", slog.String("error", err.Error()))
 
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
-	app, err := a.appProvider.App(ctx, appID)
+	app, err := a.storage.App(ctx, appID)
 	if err != nil {
 		if errors.Is(err, storage.ErrAppNotFound) {
 			log.Warn("app not found", slog.String("error", err.Error()))
@@ -131,7 +117,7 @@ func (a *Auth) Register(
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	userID, err = a.usrSaver.SaveUser(ctx, email, passData.Hash, passData.Salt)
+	userID, err = a.storage.SaveUser(ctx, email, passData.Hash, passData.Salt)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserExists) {
 			log.Warn("User already exists", slog.String("error", err.Error()))
@@ -157,7 +143,7 @@ func (a *Auth) IsAdmin(
 
 	log.Info("Checking if user is admin")
 
-	isAdmin, err = a.usrProvider.IsAdmin(ctx, userID)
+	isAdmin, err = a.storage.IsAdmin(ctx, userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			log.Warn("User not found", slog.String("error", err.Error()))

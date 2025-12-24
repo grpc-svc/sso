@@ -140,7 +140,7 @@ func TestRegister_FailCases(t *testing.T) {
 func TestLogin_FailCases(t *testing.T) {
 	ctx, st := suite.New(t)
 
-	tests := []struct {
+	for _, tt := range []struct {
 		name        string
 		email       string
 		password    string
@@ -182,9 +182,7 @@ func TestLogin_FailCases(t *testing.T) {
 			appID:       emptyAppID,
 			expectedErr: "app_id is required",
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
 			// Only register a user for the "Login with Non-Matching Password" case
 			if tt.name == "Login with Non-Matching Password" {

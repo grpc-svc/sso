@@ -114,7 +114,7 @@ func TestMustLoadByPath_RealConfigFile(t *testing.T) {
 	assert.Equal(t, "./storage/sso.db", cfg.StoragePath)
 	assert.Equal(t, time.Hour, cfg.TokenTTL)
 	assert.Equal(t, 44044, cfg.GRPC.Port)
-	assert.Equal(t, 5*time.Hour, cfg.GRPC.Timeout)
+	assert.Equal(t, 10*time.Second, cfg.GRPC.Timeout)
 }
 
 func TestConfig_StructTags(t *testing.T) {
